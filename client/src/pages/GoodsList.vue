@@ -64,7 +64,7 @@
           <svg class="icon-status-ok">
             <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-status-ok"></use>
           </svg>
-          <span>加入购物车成!</span>
+          <span>加入购物车成功!</span>
         </p>
         <div slot="btnGroup">
           <a class="btn btn--m" href="javascript:;" @click="mdShowCart = false">继续购物</a>
@@ -170,12 +170,15 @@ export default {
       this.mdShow = false
     },
     addCart (productId) {
-        // 调用添加购物车的接口
+        // 调用添加购物车的口
+      let user = document.cookie.split('=')
+      let userId = user[1].split(';')[0]
       this.$http.post('/goods/addCart', {
-        productId: productId
-      }).then((res) => {
+        productId: productId,
+        userId: userId
+      }).then(res => {
         var res1 = res.data
-        if (res1.status === 0) {
+        if (res1.status === '0') {
               // alert('加入购物车成功')
           this.mdShowCart = true
         } else {
