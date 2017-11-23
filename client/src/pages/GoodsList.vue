@@ -180,6 +180,7 @@ export default {
         var res1 = res.data
         if (res1.status === '0') {
               // alert('加入购物车成功')
+          this.$store.commit('updateCartCount', 1)
           this.mdShowCart = true
         } else {
               // alert('加入购物车失败')
