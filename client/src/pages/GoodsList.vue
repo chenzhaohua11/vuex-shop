@@ -17,7 +17,7 @@
               <dl class="filter-price">
                 <dt>价格:</dt>
                 <dd><a href="javascript:void(0)" @click="setPriceFilter('all')" v-bind:class="{'cur':priceChecked=='all'}">所有</a></dd>
-                <dd v-for="(item,index) in priceFilter" :key='index'>
+                <dd v-for="(item,index) in priceFilter">
                   <a href="javascript:void(0)" @click="setPriceFilter(index)" v-bind:class="{'cur':priceChecked==index}">{{item.startPrice}} - {{item.endPrice}}</a>
                 </dd>
               </dl>
@@ -27,15 +27,15 @@
             <div class="accessory-list-wrap">
               <div class="accessory-list col-4">
                 <ul>
-                  <li v-for="(item,index) in goodsList" :key="index">
+                  <li v-for="item in goodsList" @click="goDetail(item.productId)">
                     <div class="pic">
-                      <a href="javacript:void(0)"><img v-lazy="'static/'+item.productImage" alt=""></a>
+                      <a href="#"><img v-lazy="'static/'+item.productImage" alt=""></a>
                     </div>
                     <div class="main">
                       <div class="name">{{item.productName}}</div>
                       <div class="price">{{item.salePrice | currency('￥')}}</div>
                       <div class="btn-area">
-                        <a href="javascript:void(0);" class="btn btn--m" @click="addCart(item.productId)">加入购物车</a>
+                        <a href="javascript:;" class="btn btn--m" @click.self.stop="addCart(item.productId)">加入购物车</a>
                       </div>
                     </div>
                   </li>
@@ -64,7 +64,7 @@
           <svg class="icon-status-ok">
             <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-status-ok"></use>
           </svg>
-          <span>加入购物车成功!</span>
+          <span>加入购物车成!</span>
         </p>
         <div slot="btnGroup">
           <a class="btn btn--m" href="javascript:;" @click="mdShowCart = false">继续购物</a>
@@ -89,11 +89,10 @@ export default {
       sortFlag: true,       // 排序标记，true是升序，false降序
       page: 1,              // 当前第一页
       pageSize: 8,          // 一页8条
-      busy: true,           // 是否可以继续加载，false表示可以，true表示不行
+      busy: false,           // 是否可以继续加载，false表示可以，true表示不行
       loading: false,       // 是否正在加载
       mdShow: false,        // 登录模态框是否显示
       mdShowCart: false,    // 购物车模态框是否显示
-      sortOption: 0,
       priceFilter: [        // 价格过滤条件
         {
           startPrice: '0.00',
@@ -121,72 +120,70 @@ export default {
     this.getGoodsList()
   },
   methods: {
-    loadMore () {
-      this.busy = true
-
-        // 延迟加载
-      setTimeout(() => {
-        this.page ++
-        this.getGoodsList(true)
-      }, 500)
-    },
-    sortGoods () {
-      this.sortOption = 1
-      this.sortFlag = !this.sortFlag
-      this.getGoodsList()
-    },
-    getGoodsList (flag) {
-      let param = {
-        sort: this.sortFlag ? 1 : -1,
-        priceLevel: this.priceChecked,
+    getGoodsList (loadmoreFlag) {
+      var params = {
         page: this.page,
-        pageSize: this.pageSize
+        pageSize: this.pageSize,
+        sort: this.sortFlag ? 1 : -1,
+        priceLevel: this.priceChecked
       }
-
-      var that = this
-
-      this.$http.get('/goods/list', {params: param}).then((result) => {
-        let res = result.data
-        if (flag) {
-          that.goodsList = that.goodsList.concat(res.result.list)
-              // 判断当数据加载完了就截停
-          if (res.result.length === 0) {
-            that.busy = true
+      this.loading = true
+      this.$http.get('/goods/list', {params})
+      .then(res => {
+        res = res.data
+        // 正在加载不显示
+        this.loading = false
+        // 数据请求正常时
+        if (res.status === '0') {
+          // 如果是加载更多的情况
+          if (loadmoreFlag) {
+            // 将结果和之前的商品数据合并
+            this.goodsList = this.goodsList.concat(res.result.list)
+            // 如果返回的数量比一页的数量小，则不允许再请求
+            this.busy = res.result.count < this.pageSize
           } else {
-            that.busy = false
+            this.goodsList = res.result.list
+            this.busy = false
           }
-        } else {
-          that.goodsList = res.result.list
-          that.busy = false
         }
       })
     },
-    setPriceFilter (index) {
+    goDetail(productId) {
+      this.$router.push({
+        path: `/detail/${productId}`
+      })
+    },
+    sortGoods () {
+      this.sortFlag = !this.sortFlag
       this.page = 1
-      this.priceChecked = index
       this.getGoodsList()
     },
-    closeModal () {
-      this.mdShow = false
+    setPriceFilter (index) {
+      this.busy = false
+      this.priceChecked = index
+      this.page = 1
+      this.getGoodsList()
+    },
+    loadMore () {
+      this.busy = true
+      this.page++
+      this.getGoodsList(true)
     },
     addCart (productId) {
-        // 调用添加购物车的口
-      let user = document.cookie.split('=')
-      let userId = user[1].split(';')[0]
-      this.$http.post('/goods/addCart', {
-        productId: productId,
-        userId: userId
-      }).then(res => {
-        var res1 = res.data
-        if (res1.status === '0') {
-              // alert('加入购物车成功')
-          this.$store.commit('updateCartCount', 1)
+      this.$http.post('/goods/addCart', {productId})
+      .then(res => {
+        res = res.data
+        if (res.status === '0') {
           this.mdShowCart = true
+          this.$store.commit('updateCartCount', 1)
         } else {
-              // alert('加入购物车失败')
           this.mdShow = true
         }
       })
+    },
+    closeModal () {
+      this.mdShow = false
+      this.mdShowCart = false
     }
   }
 }

@@ -9,13 +9,13 @@
 </style>
 <script>
 export default{
-  props: ['num'],
-  methods: {
-    increment () {
-      this.$emit('incre')
+  props:["num"],
+  methods:{
+    increment(){
+      this.$emit("incre")
     },
-    decrement () {
-      this.$emit('decre')
+    decrement(){
+      this.$emit("decre")
     }
   }
 }

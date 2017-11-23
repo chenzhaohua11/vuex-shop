@@ -1,7 +1,7 @@
 <template>
 <div>
     <nav-bread>
-      <span>我的购物车</span>
+      <span>我的订单</span>
     </nav-bread>
     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" version="1.1"
          xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -44,7 +44,7 @@
     <div class="container">
       <div class="cart">
         <div class="page-title-normal">
-          <h2 class="page-title-h2"><span>我的购物车</span></h2>
+          <h2 class="page-title-h2"><span>我的订单</span></h2>
         </div>
         <div class="item-list-wrap">
           <div class="cart-item">
@@ -57,16 +57,16 @@
                 <li>编辑</li>
               </ul>
             </div>
-            <ul class="cart-item-list">
-              <li v-for="item in cartList">
+            <ul class="cart-item-list" v-for="order in orderList">
+              <li :class="order.orderStatus === '1' ? 'blue' : 'gray'">
+                订单号：{{ order.orderId }}
+                订单状态：{{ order.orderStatus === '1' ? '已完成' : '已取消'}}
+                订单总价：{{ order.orderTotal | currency }}
+                时间：{{ order.createDate }}
+                <a href="#" @click="delCartConfirm(order.orderId)">取消订单</a>
+              </li>
+              <li v-for="item in order.goodsList">
                 <div class="cart-tab-1">
-                  <div class="cart-item-check">
-                    <a href="javascipt:;" class="checkbox-btn item-check-btn" v-bind:class="{'check':item.checked=='1'}" @click="editCart('checked', item)">
-                      <svg class="icon icon-ok">
-                        <use xlink:href="#icon-ok"></use>
-                      </svg>
-                    </a>
-                  </div>
                   <div class="cart-item-pic">
                     <img v-lazy="'/static/'+item.productImage" v-bind:alt="item.productName">
                   </div>
@@ -81,9 +81,7 @@
                   <div class="item-quantity">
                     <div class="select-self select-self-open">
                       <div class="select-self-area">
-                        <a class="input-sub" @click="editCart('minu', item)">-</a>
                         <span class="select-ipt">{{item.productNum}}</span>
-                        <a class="input-add" @click="editCart('add', item)">+</a>
                       </div>
                     </div>
                   </div>
@@ -92,44 +90,15 @@
                   <div class="item-price-total">{{(item.productNum*item.salePrice)|currency('￥')}}</div>
                 </div>
                 <div class="cart-tab-5">
-                  <div class="cart-item-opration">
-                    <a href="javascript:;" class="item-edit-btn" @click="delCartConfirm(item)">
-                      <svg class="icon icon-del">
-                        <use xlink:href="#icon-del"></use>
-                      </svg>
-                    </a>
-                  </div>
                 </div>
               </li>
             </ul>
           </div>
         </div>
-        <div class="cart-foot-wrap">
-          <div class="cart-foot-inner">
-            <div class="cart-foot-l">
-              <div class="item-all-check">
-                <a @click="toggleCheckAll">
-                  <span class="checkbox-btn item-check-btn" v-bind:class="{'check':checkAllFlag}">
-                      <svg class="icon icon-ok"><use xlink:href="#icon-ok"/></svg>
-                  </span>
-                  <span>全选</span>
-                </a>
-              </div>
-            </div>
-            <div class="cart-foot-r">
-              <div class="item-total">
-                总计: <span class="total-price">{{totalPrice|currency('￥')}}</span>
-              </div>
-              <div class="btn-wrap">
-                <a class="btn btn--red" v-bind:class="{'btn--dis':checkedCount==0}" @click="checkOut">结算</a>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
     <modal :mdShow="modalConfirm" @close="closeModal">
-      <p slot="message">你确认要删除此条数据吗?</p>
+      <p slot="message">你确认要取消此订单吗?</p>
       <div slot="btnGroup">
         <a class="btn btn--m" href="javascript:;" @click="delCart">确认</a>
         <a class="btn btn--m btn--red" href="javascript:;" @click="modalConfirm = false">关闭</a>
@@ -137,7 +106,16 @@
     </modal>
   </div>
 </template>
-
+<style media="screen" scoped>
+  .cart-item-list > li.blue {
+    border: 1px dashed blue;
+    background: blue;
+  }
+  .cart-item-list > li.gray {
+    border: 1px dashed gray;
+    background: gray;
+  }
+</style>
 <script>
 import '@/assets/css/cart.css'
 import Public from '@/Public'
@@ -145,9 +123,9 @@ import Modal from '@/components/Modal'
 export default {
   data () {
     return {
-      cartList: [],
-      delItem: {},
-      modalConfirm: false
+      orderList: [],
+      modalConfirm: false,
+      orderId: ''
     }
   },
   mixins: [Public],
@@ -157,98 +135,30 @@ export default {
   mounted () {
     this.init()
   },
-  computed: {
-    checkAllFlag () {
-      return this.checkedCount === this.cartList.length
-    },
-    checkedCount () {
-      let count = 0
-      this.cartList.forEach(item => {
-        if (item.checked === 1) count++
-      })
-      return count
-    },
-    totalPrice () {
-      let sum = 0
-      this.cartList.forEach(item => {
-        if (parseInt(item.checked) === 1) {
-          sum += parseFloat(item.salePrice) * parseInt(item.productNum)
-        }
-      })
-      return sum
-    }
-  },
   methods: {
     init () {
-      this.$http.get('/users/cartList')
+      this.$http.get('/users/orders')
       .then(res => {
         res = res.data
-        res.result.forEach(item => {
-          item.checked = parseInt(item.checked)
-        })
-        this.cartList = res.result
+        this.orderList = res.result
       })
     },
-    delCartConfirm (item) {
-      this.delItem = item
+    delCartConfirm (orderId) {
+      this.orderId = orderId
       this.modalConfirm = true
     },
     closeModal () {
       this.modalConfirm = false
     },
     delCart () {
-      this.$http.post('/users/cartDel', {productId: this.delItem.productId})
+      this.$http.post('/users/cancelOrder', {orderId: this.orderId})
       .then(res => {
         res = res.data
         if (res.status === '0') {
           this.modalConfirm = false
-          let delCount = this.delItem.productNum
-          this.$store.commit('updateCartCount', -delCount)
           this.init()
         }
       })
-    },
-    editCart (flag, item) {
-      if (flag === 'add') {
-        item.productNum++
-      } else if (flag === 'minu') {
-        if (item.productNum <= 1) {
-          return
-        }
-        item.productNum--
-      } else {
-        item.checked = item.checked === 1 ? 0 : 1
-      }
-      let { productId, productNum, checked } = item
-      this.$http.post('/users/cartEdit', { productId, productNum, checked })
-      .then(res => {
-        res = res.data
-        if (res.status === '0') {
-          if (flag === 'add' || flag === 'minu') {
-            this.$store.commit('updateCartCount', flag === 'add' ? 1 : -1)
-          }
-        }
-      })
-    },
-    toggleCheckAll () {
-      let flag = !this.checkAllFlag
-      this.cartList.forEach(item => {
-        item.checked = flag ? 1 : 0
-      })
-      this.$http.post('/users/editCheckAll', { checkAll: flag })
-      .then(res => {
-        res = res.data
-        if (res.status === '0') {
-          console.log('update succ')
-        }
-      })
-    },
-    checkOut () {
-      if (this.checkedCount > 0) {
-        this.$router.push({
-          path: '/address'
-        })
-      }
     }
   }
 }
