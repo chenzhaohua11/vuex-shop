@@ -109,8 +109,8 @@ import { mapState } from 'vuex'
 export default{
   data () {
     return {
-      userName: 'admin',
-      userPwd: '123456',
+      userName: '',
+      userPwd: '',
       errorTip: false,
       loginModalFlag: false,
       registerModalFlag: false,
@@ -177,6 +177,7 @@ export default{
         if (res.status === '0') {
           this.$store.commit('updateUserInfo', res.result.userName)
           this.$store.commit('clearCartCount')
+	  this.$router.push('/')
         }
       })
     },
